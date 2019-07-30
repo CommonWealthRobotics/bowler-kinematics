@@ -37,7 +37,7 @@ class CCDSolver : InverseKinematicsSolver {
         links: ImmutableList<Link>,
         currentJointAngles: ImmutableList<Double>,
         targetFrameTransform: FrameTransformation
-    ) = solveChain(links, currentJointAngles, targetFrameTransform, 1e-4, 50)
+    ) = solveChain(links, currentJointAngles, targetFrameTransform, 0.1, 100)
 
     fun solveChain(
         links: ImmutableList<Link>,
@@ -60,7 +60,7 @@ class CCDSolver : InverseKinematicsSolver {
         while (iter < maxIterations && delta > tolerance) {
             for (i in links.size - 1 downTo 0) {
                 val theta = calcTheta(targetFrameTransform, mutLinks, i)
-                if (i == 0) {
+                if (i % 2 == 0) {
                     mutLinks[i] = mutLinks[i].addTheta(toDegrees(-theta))
                 } else {
                     mutLinks[i] = mutLinks[i].addTheta(toDegrees(theta))

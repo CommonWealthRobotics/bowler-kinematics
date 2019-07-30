@@ -83,15 +83,17 @@ internal object TestUtil {
         DhParam(5.6, 0, 0, 0)
     )
 
-    internal val hephaestusArmLinks: ImmutableList<Link> = hephaestusArmDhParams.map {
-        DefaultLink(
-            LinkType.Rotary,
-            it,
-            Limits(180, -180),
-            NoopInertialStateEstimator
-        )
-    }.toImmutableList()
+    internal val hephaestusArmLinks: ImmutableList<Link> = hephaestusArmDhParams.links()
 }
+
+internal fun List<DhParam>.links(): ImmutableList<Link> = map {
+    DefaultLink(
+        LinkType.Rotary,
+        it,
+        Limits(180, -180),
+        NoopInertialStateEstimator
+    )
+}.toImmutableList()
 
 /**
  * Matches any element not equal to [value].

@@ -6,11 +6,6 @@ description = "The core module."
 
 dependencies {
     api(
-        group = "com.neuronrobotics",
-        name = "java-bowler",
-        version = property("java-bowler.version") as String
-    )
-    api(
         group = "org.apache.commons",
         name = "commons-math3",
         version = property("commons-math3.version") as String

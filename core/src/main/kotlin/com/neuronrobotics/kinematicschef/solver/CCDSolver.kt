@@ -17,19 +17,21 @@
 package com.neuronrobotics.kinematicschef.solver
 
 import com.google.common.collect.ImmutableList
-import com.google.common.math.DoubleMath
 import com.neuronrobotics.bowlerkernel.kinematics.limb.link.DefaultLink
 import com.neuronrobotics.bowlerkernel.kinematics.limb.link.Link
 import com.neuronrobotics.bowlerkernel.kinematics.limb.link.toFrameTransformation
 import com.neuronrobotics.bowlerkernel.kinematics.motion.FrameTransformation
 import com.neuronrobotics.bowlerkernel.kinematics.motion.InverseKinematicsSolver
 import com.neuronrobotics.kinematicschef.util.modulus
+import org.apache.commons.math3.geometry.euclidean.threed.Plane
+import org.apache.commons.math3.geometry.euclidean.threed.Rotation
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
-import org.apache.commons.math3.geometry.euclidean.twod.Vector2D
+import org.apache.commons.math3.geometry.euclidean.twod.Line
 import org.octogonapus.ktguava.collections.toImmutableList
 import java.lang.Math.toDegrees
 import kotlin.math.acos
 import kotlin.math.pow
+import kotlin.math.sign
 
 class CCDSolver : InverseKinematicsSolver {
 
@@ -60,11 +62,7 @@ class CCDSolver : InverseKinematicsSolver {
         while (iter < maxIterations && delta > tolerance) {
             for (i in links.size - 1 downTo 0) {
                 val theta = calcTheta(targetFrameTransform, mutLinks, i)
-                if (i % 2 == 0) {
-                    mutLinks[i] = mutLinks[i].addTheta(toDegrees(-theta))
-                } else {
-                    mutLinks[i] = mutLinks[i].addTheta(toDegrees(theta))
-                }
+                mutLinks[i] = mutLinks[i].addTheta(toDegrees(theta))
             }
 
             iter++
@@ -83,21 +81,42 @@ class CCDSolver : InverseKinematicsSolver {
     ): Double {
         val tip = chain.tip()
         val currentFt = chain.subList(0, currentIndex).tip()
+        val rotation = Rotation(currentFt.rotation.transpose().array, 1e-10)
 
-        val pt = Vector2D(target.translationX, target.translationY)
-        val pe = Vector2D(tip.translationX, tip.translationY)
-        val pc = Vector2D(currentFt.translationX, currentFt.translationY)
+        val targetVector = Vector3D(
+            target.translationX,
+            target.translationY,
+            target.translationZ
+        )
+
+        val tipVector = Vector3D(
+            tip.translationX,
+            tip.translationY,
+            tip.translationZ
+        )
+
+        val baseVector = Vector3D(
+            currentFt.translationX,
+            currentFt.translationY,
+            currentFt.translationZ
+        )
+
+        val linkPlane = Plane(Vector3D(0.0, 0.0, 1.0), 1e-10)
+            .translate(baseVector)
+            .rotate(baseVector, rotation)
+
+        val projectedTarget = projectOntoPlane(baseVector, targetVector, linkPlane)
+        val projectedTip = projectOntoPlane(baseVector, tipVector, linkPlane)
+
+        val pt = linkPlane.toSubSpace(projectedTarget)
+        val pe = linkPlane.toSubSpace(projectedTip)
+        val pc = linkPlane.toSubSpace(baseVector)
 
         val c = pt.subtract(pe).norm
         val a = pt.subtract(pc).norm
         val b = pe.subtract(pc).norm
 
-        // If pe is inline but above pt it needs to be moved down
-        val sign = if (pe.y > pt.y && DoubleMath.fuzzyEquals(pe.x, pt.x, 1e-4)) {
-            -1
-        } else {
-            1
-        }
+        val sign = sign(Line(pc, pt, 1e-10).getOffset(pe))
 
         return if (a == 0.0 || b == 0.0) {
             0.0
@@ -105,6 +124,14 @@ class CCDSolver : InverseKinematicsSolver {
             sign * acos((c.pow(2) - a.pow(2) - b.pow(2)) / -(2 * a * b))
         }
     }
+
+    private fun projectOntoPlane(base: Vector3D, toProject: Vector3D, plane: Plane) =
+        toProject.subtract(
+            plane.normal.scalarMultiply(
+                toProject.subtract(base)
+                    .dotProduct(plane.normal)
+            )
+        )
 
     private fun List<Link>.tip(): FrameTransformation = map { it.dhParam }.toFrameTransformation()
 

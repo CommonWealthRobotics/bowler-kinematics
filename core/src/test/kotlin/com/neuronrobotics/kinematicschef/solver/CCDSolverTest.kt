@@ -35,13 +35,20 @@ internal class CCDSolverTest {
         DhParam(0, 0, 10, 0),
         DhParam(0, 0, 10, 0),
         DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
+        DhParam(0, 0, 10, 0),
         DhParam(0, 0, 10, 0)
     ).links()
 
     @Test
     fun `test fk to ik`() {
-        (10..20 step 1).map { targetPos ->
-            val target = FrameTransformation.fromTranslation(targetPos, 5, 0)
+        (10..40 step 1).map { targetPos ->
+            val target = FrameTransformation.fromTranslation(targetPos, targetPos, 0)
 
             val resultAngles = ik.solveChain(
                 planarLinks,

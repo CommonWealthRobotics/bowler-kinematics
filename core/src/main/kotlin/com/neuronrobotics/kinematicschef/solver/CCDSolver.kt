@@ -39,7 +39,7 @@ class CCDSolver : InverseKinematicsSolver {
         links: ImmutableList<Link>,
         currentJointAngles: ImmutableList<Double>,
         targetFrameTransform: FrameTransformation
-    ) = solveChain(links, currentJointAngles, targetFrameTransform, 0.1, 100)
+    ) = solveChain(links, currentJointAngles, targetFrameTransform, 1e-3, 10000)
 
     fun solveChain(
         links: ImmutableList<Link>,
@@ -63,6 +63,20 @@ class CCDSolver : InverseKinematicsSolver {
             for (i in links.size - 1 downTo 0) {
                 val theta = calcTheta(targetFrameTransform, mutLinks, i)
                 mutLinks[i] = mutLinks[i].addTheta(toDegrees(theta))
+                println(mutLinks.map { it.dhParam.theta })
+
+                val newDelta = calcDelta(mutLinks.tip())
+                if (newDelta > delta) {
+                    mutLinks[i] = mutLinks[i].addTheta(-2 * toDegrees(theta))
+                    println(
+                        """
+                        Delta increased!
+                        iter: $iter
+                        linkIndex: $i
+                        theta: ${toDegrees(theta)}
+                        """.trimIndent()
+                    )
+                }
             }
 
             iter++
@@ -116,12 +130,13 @@ class CCDSolver : InverseKinematicsSolver {
         val a = pt.subtract(pc).norm
         val b = pe.subtract(pc).norm
 
-        val sign = sign(Line(pc, pt, 1e-10).getOffset(pe))
+        val sign = -sign(Line(pc, pt, 1e-10).getOffset(pe))
 
         return if (a == 0.0 || b == 0.0) {
             0.0
         } else {
             sign * acos((c.pow(2) - a.pow(2) - b.pow(2)) / -(2 * a * b))
+                .let { if (it.isNaN()) 0.0 else it }
         }
     }
 

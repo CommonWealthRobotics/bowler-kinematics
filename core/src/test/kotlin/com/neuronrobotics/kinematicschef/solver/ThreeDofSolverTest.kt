@@ -39,13 +39,16 @@ internal class ThreeDofSolverTest {
                 hephaestusArmLinks.map { 0.0 }.toImmutableList(),
                 target
             )
-            val resultTarget = fk.solveChain(hephaestusArmLinks, resultAngles)
-            assertTrue(target.translation.approxEquals(resultTarget.translation, 1e-10)) {
+
+            println("${target.translation.array.joinToString { it.joinToString() }} $resultAngles")
+
+            val resultTarget = fk.solveChain(hephaestusArmLinks, resultAngles.toImmutableList())
+            assertTrue(target.translation.approxEquals(resultTarget.translation, 0.1)) {
                 """
                 Target:
-                $target
+                ${target.translation.array.joinToString { it.joinToString() }}
                 Result:
-                $resultTarget
+                ${resultTarget.translation.array.joinToString { it.joinToString() }}
                 Result angles:
                 $resultAngles
                 """.trimIndent()
